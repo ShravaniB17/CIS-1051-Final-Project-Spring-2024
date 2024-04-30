@@ -1,110 +1,117 @@
-'''
+
+
+
 import pygame
+import sys
 import random
 
 pygame.init()
 
 
-Words = open("Words.txt","r")
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GRAY = (200, 200, 200, 128)
+YELLOW = (255, 255, 0)
+GREEN = (0, 255, 0)
 
-
-WIDTH, HEIGHT = 633, 900
-
-SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
-BACKGROUND = pygame.image.load("Starting Tiles.png")
-#BACKGROUND_RECT = BACKGROUND.get_rect(center=(317, 300))
-
-GREEN = "#6aaa64"
-YELLOW = "#c9b458"
-GREY = "#787c7e"
-OUTLINE = "#d3d6da"
-FILLED_OUTLINE = "#878a8c"
-
-KEYBOARD = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"]
-
-SCREEN.fill("white")
-SCREEN.blit(BACKGROUND) #, BACKGROUND_RECT)
-pygame.display.update()
-
-LETTER_X_SPACING = 85
-LETTER_Y_SPACING = 12
-LETTER_SIZE = 75
-
-
-guessCount = 0
-
-guesses = [[]] * 6
-
-current_guess = []
-current_guess_string = ""
-current_letter_bg_x = 110
-'''
-import pygame
-import random
-
-pygame.init()
-
-
-WIDTH, HEIGHT = 450, 800
-
+WIDTH, HEIGHT = 420, 640
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-GUESSED_LETTER_FONT = pygame.font.Font("FreeSansBold.otf", 50)
-AVAILABLE_LETTER_FONT = pygame.font.Font("FreeSansBold.otf", 25)
+pygame.display.set_caption("Wordle Lite")
 
-GREEN = "#6aaa64"
-YELLOW = "#c9b458"
-GREY = "#787c7e"
-FILLED_OUTLINE = "#878a8c"
-guessesCount = 0
-guesses = [[]] * 6
-current_guess = []
-current_guess_string = ""
-current_letter_bg_x = 110
+font = pygame.font.Font(None, 40)
 
 
-screen.fill((255, 255, 255))
-def tiles():
-    for x in range(4):
-        for y in range(6):
-            pygame.draw.rect(screen, (0, 0, 0), (10 + 110*x, 10 + 110*y, 100, 100), width = 3)
+with open("words.txt", "r") as file:
+    words = file.read().splitlines()
+correct_word = random.choice(words).upper()
+print("Correct word:", correct_word)
 
 
-tiles()
-pygame.display.update()
+RECT_WIDTH = 75
+RECT_HEIGHT = 75
+RECT_GAP_X = 15
+RECT_GAP_Y = 15
+START_X = 65
+START_Y = 65
+WORD_GAP = 30
 
+def draw_rectangles(x, y):
+    rectangles = []
+    for i in range(4):
+        for j in range(6):  
+            rect = pygame.Rect(x + i * (RECT_WIDTH + RECT_GAP_X), y + j * (RECT_HEIGHT + RECT_GAP_Y), RECT_WIDTH, RECT_HEIGHT)
+            pygame.draw.rect(screen, BLACK, rect, 2)
+            rectangles.append(rect)
+    return rectangles
 
-letterXspacing = 12
-letterYspacing = 12
-letterSize = 75
+def draw_feedback(correct_word, guessed_word):
+    feedback_x = 50
+    feedback_y = 420
+    for i, letter in enumerate(guessed_word):
+        color = BLACK
+        if letter in correct_word:
+            if letter == correct_word[i]:
+                color = GREEN
+            else:
+                color = YELLOW
+        text_surface = font.render(letter, True, color)
+        screen.blit(text_surface, (feedback_x + i * (RECT_WIDTH + RECT_GAP_X), feedback_y))
 
-# Main game loop will go here
+word_input_x = 50
+word_input_y = 50
 
-def read_random_word():
-    with open("Words.txt") as f:
-        word_array = f.read().splitlines()
-        return random.choice(word_array)
-word = read_random_word()
+entered_words = [''] * 6  
+feedback_shown = [False] * 6  
 
-
-
-# Event loop to keep the window open
 running = True
+current_column = 0  
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            pygame.quit()
-        if event.type == pygame.KEYDOWN:
+            running = False
+        elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_RETURN:
-                if game_result != "":
-                    reset()
+                if not feedback_shown[current_column]:
+                    entered_word = entered_words[current_column]
+                    draw_feedback(correct_word, entered_word)
+                    feedback_shown[current_column] = True
                 else:
-                    if len(current_guess_string) == 5 and current_guess_string.lower() in WORDS:
-                        check_guess(current_guess)
-            elif event.key == pygame.K_BACKSPACE:
-                if len(current_guess_string) > 0:
-                    delete_letter()
+                    current_column += 1
+                    if current_column >= 6:  
+                        break
+                    word_input_x = 50 
+                    entered_words[current_column] = ''  
+                    feedback_shown[current_column] = False  
+            elif event.key == pygame.K_BACKSPACE:  
+                if entered_words[current_column]:
+                    entered_words[current_column] = entered_words[current_column][:-1]
             else:
                 key_pressed = event.unicode.upper()
-                if key_pressed in "QWERTYUIOPASDFGHJKLZXCVBNM" and key_pressed != "":
-                    if len(current_guess_string) < 5:
-                        create_new_letter()
+                if key_pressed in "QWERTYUIOPASDFGHJKLZXCVBNM" and len(entered_words[current_column]) < 4:
+                    entered_words[current_column] += event.unicode  
+
+    screen.fill(WHITE)
+    
+
+    for i, word in enumerate(entered_words):
+        for j, char in enumerate(word):
+            rect_center_x = rectangles[i * 4 + j].centerx
+            rect_center_y = rectangles[i * 4 + j].centery
+            text_surface = font.render(char, True, BLACK)
+            text_rect = text_surface.get_rect(center=(rect_center_x, rect_center_y))
+            screen.blit(text_surface, (50 + j * (RECT_WIDTH + RECT_GAP_X), 50 + i * (RECT_HEIGHT + RECT_GAP_Y)))
+            #draw_feedback(correct_word, entered_words)
+            
+ 
+    rectangles = draw_rectangles(word_input_x-30, word_input_y-30)
+    for rect in rectangles:
+        pygame.draw.rect(screen, GRAY, rect, 2)
+    
+    pygame.display.flip()
+
+pygame.quit()
+sys.exit()
+
+
+
+
